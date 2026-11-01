@@ -1,0 +1,48 @@
+# Path rules run first-match, listed most-restrictive first.
+# classify_path() in gateway/core/context.py walks this list in order.
+path_rules:
+  - pattern: ".env*"
+    resource_type: secret
+    tier: T3
+  - pattern: "*.pem"
+    resource_type: secret
+    tier: T3
+  - pattern: "*.key"
+    resource_type: secret
+    tier: T3
+  - pattern: "id_rsa*"
+    resource_type: secret
+    tier: T3
+  - pattern: "secrets/**"
+    resource_type: secret
+    tier: T3
+  - pattern: "config/**"
+    resource_type: config
+    tier: T2
+  - pattern: "deploy/**"
+    resource_type: config
+    tier: T2
+  - pattern: "README*"
+    resource_type: docs
+    tier: T0
+  - pattern: "docs/**"
+    resource_type: docs
+    tier: T0
+  - pattern: "**"
+    resource_type: code
+    tier: T1 # default for any other file
+
+# Tools whose resource type/tier comes from the tool name itself, not a path arg.
+tool_resource_types:
+  list_issues: { resource_type: issue, tier: T1 }
+  get_issue: { resource_type: issue, tier: T1 }
+  get_issue_comments: { resource_type: issue_comment, tier: T1 }
+  search_issues: { resource_type: issue, tier: T1 }
+  list_labels: { resource_type: label, tier: T0 }
+  add_labels: { resource_type: label, tier: T0 }
+  get_pr: { resource_type: pull_request, tier: T1 }
+  # base tier only; raised by changed-path classification during the
+  # get_pr_diff metadata lookup (see context.tier_for_paths)
+  get_pr_diff: { resource_type: pr_diff, tier: T1 }
+  list_commits: { resource_type: commit, tier: T1 }
+  post_review_comment: { resource_type: pull_request, tier: T1 }

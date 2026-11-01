@@ -1,0 +1,23 @@
+# Two services: the gateway (own-gateway/REST mode, the only backend built
+# for v1) and the Streamlit app. No github-mcp service -- proxy mode isn't
+# built; see gateway/backends/base.py for that seam.
+services:
+  gateway:
+    build: .
+    command: python -m gateway.server
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+
+  streamlit:
+    build: .
+    command: streamlit run app/Home.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    env_file: .env
+    environment:
+      - GATEWAY_URL=http://gateway:8080
+    depends_on:
+      - gateway

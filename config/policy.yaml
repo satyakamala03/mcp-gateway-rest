@@ -1,0 +1,58 @@
+# Source of truth for the demo. In production this would be split between a
+# repo registry, an IdP (users/roles as signed claims) and a reviewed policy file.
+
+repos:
+  storefront:
+    visibility: public
+  payments-api:
+    visibility: private
+
+agents:
+  triage-agent:
+    allowed_roles: [support, engineer]
+    intents:
+      triage_issues:
+        read: [issue, issue_comment, label, repo_meta]
+        write:
+          add_labels: { only_fields: [labels] }
+        max_tier: T1
+        repos: [storefront, payments-api]
+      find_duplicates:
+        read: [issue, label]
+        write: {}
+        max_tier: T1
+        repos: [storefront, payments-api]
+
+  review-agent:
+    allowed_roles: [engineer]
+    intents:
+      review_pr:
+        read:
+          [
+            pull_request,
+            pr_diff,
+            code,
+            docs,
+            commit,
+            issue,
+            issue_comment,
+            repo_meta,
+          ]
+        write:
+          # post_review_comment's canonical args are repo, number, body only
+          # (see gateway/backends/base.py) -- there is no event/approve
+          # field to constrain. "Comment only" is enforced structurally by
+          # the backend method having no approve/request-changes capability
+          # at all, not by a per-call argument check.
+          post_review_comment: {}
+        max_tier: T1
+        repos: [storefront, payments-api]
+      explain_code:
+        read: [code, docs, repo_meta]
+        write: {}
+        max_tier: T1
+        repos: [storefront, payments-api]
+
+users:
+  alice: { role: engineer, repos: [storefront, payments-api], max_tier: T2, write: any }
+  bob: { role: support, repos: [storefront], max_tier: T1, write: [add_labels] }

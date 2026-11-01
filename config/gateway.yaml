@@ -1,0 +1,13 @@
+backend: rest # only backend built for v1; kept as a field so `mcp` is a
+# config-only switch later if proxy mode is requested
+github:
+  token_env: GITHUB_TOKEN
+server:
+  port: 8080
+admin:
+  token_env: ADMIN_TOKEN
+session:
+  signing_key_env: SESSION_SIGNING_KEY
+  ttl_minutes: 15
+audit:
+  db_path: data/audit.db
