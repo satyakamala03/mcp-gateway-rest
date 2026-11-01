@@ -129,8 +129,10 @@ def render_agent_page(agent_id: str, display_name: str) -> None:
     )
     result = agent.send(user_text, state["token"], state["history"])
 
+    # Cross-turn history is kept text-only (no tool_calls replayed across
+    # turns) -- matches the provider-neutral shape agents/llm.py expects.
     state["history"].append({"role": "user", "content": user_text})
-    state["history"].append({"role": "assistant", "content": result.reply})
+    state["history"].append({"role": "assistant", "text": result.reply, "tool_calls": []})
     state["turns"].append({"role": "user", "text": user_text})
     state["turns"].append(
         {

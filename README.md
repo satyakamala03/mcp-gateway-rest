@@ -25,7 +25,7 @@ A few things in the design doc didn't survive contact with real code; this is wh
 ### Local (uv)
 
 ```bash
-cp .env.example .env   # fill in GITHUB_TOKEN, GITHUB_OWNER, signing/admin keys, agent tokens, ANTHROPIC_API_KEY
+cp .env.example .env   # fill in GITHUB_TOKEN, GITHUB_OWNER, signing/admin keys, agent tokens, OPENAI_API_KEY
 uv sync
 
 # terminal 1
@@ -64,7 +64,7 @@ gateway/           # the gateway itself: northbound MCP server, core decision en
   core/             # models, auth (R01-R03), context (classification), policy (R04-R12), redact, audit, config
   backends/         # GitHubBackend protocol, RestBackend, FakeBackend
 config/             # policy.yaml, classification.yaml, gateway.yaml
-agents/             # thin tool-calling loop + Claude client + prompts
+agents/             # thin tool-calling loop + OpenAI client + prompts
 app/                # Streamlit: Home, Triage, Review, Admin pages
 tests/
   unit/              # policy/context/auth/redact, no I/O

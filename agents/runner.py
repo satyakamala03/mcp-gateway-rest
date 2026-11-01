@@ -68,30 +68,34 @@ class GatewayAgent:
 
     async def _run_turn(self, session: ClientSession, user_text: str, history: list[dict]) -> TurnResult:
         tools_result = await session.list_tools()
-        anthropic_tools = [
+        tool_specs = [
             {"name": t.name, "description": t.description or "", "input_schema": t.inputSchema}
             for t in tools_result.tools
         ]
 
+        # Provider-neutral message shape -- see agents/llm.py's module
+        # docstring for the schema. llm.py is the only place this gets
+        # translated into a specific provider's wire format.
         messages = [*history, {"role": "user", "content": user_text}]
         tool_calls: list[ToolCallRecord] = []
 
         for _ in range(MAX_TOOL_CALLS_PER_TURN):
-            response = complete(self.system_prompt, messages, anthropic_tools)
+            response = complete(self.system_prompt, messages, tool_specs)
 
             if not response.tool_uses:
                 return TurnResult(reply=response.text or "", tool_calls=tool_calls)
 
-            assistant_content = []
-            if response.text:
-                assistant_content.append({"type": "text", "text": response.text})
-            for tu in response.tool_uses:
-                assistant_content.append(
-                    {"type": "tool_use", "id": tu.id, "name": tu.name, "input": tu.input}
-                )
-            messages.append({"role": "assistant", "content": assistant_content})
+            messages.append(
+                {
+                    "role": "assistant",
+                    "text": response.text,
+                    "tool_calls": [
+                        {"id": tu.id, "name": tu.name, "input": tu.input}
+                        for tu in response.tool_uses
+                    ],
+                }
+            )
 
-            tool_result_blocks = []
             for tu in response.tool_uses:
                 result = await session.call_tool(tu.name, tu.input)
                 text = result.content[0].text if result.content else "{}"
@@ -110,15 +114,14 @@ class GatewayAgent:
                         message=parsed.get("reason") or parsed.get("message"),
                     )
                 )
-                tool_result_blocks.append(
+                messages.append(
                     {
-                        "type": "tool_result",
-                        "tool_use_id": tu.id,
+                        "role": "tool_result",
+                        "tool_call_id": tu.id,
                         "content": text,
                         "is_error": result.isError,
                     }
                 )
-            messages.append({"role": "user", "content": tool_result_blocks})
 
         return TurnResult(
             reply="(stopped after reaching the per-turn tool-call limit)",
