@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
 
 from agents.runner import GatewayAgent
 from gateway.core.auth import SESSION_TTL, mint_session_token
@@ -20,6 +21,8 @@ from gateway.core.config import load_policy
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "config"
 PROMPTS_DIR = ROOT / "agents" / "prompts"
+
+load_dotenv(ROOT / ".env")
 
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://localhost:8080")
 SESSION_SIGNING_KEY = os.environ["SESSION_SIGNING_KEY"]

@@ -6,14 +6,18 @@ throwaway script for manual verification only.
 
 import hashlib
 import os
+from pathlib import Path
 
 import uvicorn
+from dotenv import load_dotenv
 
 from gateway.backends.fake import FakeBackend
 from gateway.core.audit import AuditLog
 from gateway.core.auth import AgentTokenStore, KillSwitch
 from gateway.core.config import load_classification, load_policy
 from gateway.server import GatewayDeps, create_app
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 CONFIG_DIR = "config"
 

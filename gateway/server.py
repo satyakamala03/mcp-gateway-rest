@@ -392,10 +392,14 @@ def create_app(deps: GatewayDeps) -> Starlette:
 def build_deps_from_env() -> GatewayDeps:
     from pathlib import Path
 
+    from dotenv import load_dotenv
+
     from gateway.backends.rest import RestBackend
     from gateway.core.config import load_classification, load_policy
 
-    config_dir = Path(__file__).resolve().parent.parent / "config"
+    root = Path(__file__).resolve().parent.parent
+    load_dotenv(root / ".env")
+    config_dir = root / "config"
     policy = load_policy(config_dir / "policy.yaml")
     classification = load_classification(config_dir / "classification.yaml")
     audit = AuditLog(os.environ.get("AUDIT_DB_PATH", "data/audit.db"))
