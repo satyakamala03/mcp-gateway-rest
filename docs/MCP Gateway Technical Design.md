@@ -481,9 +481,9 @@ The plan builds from the inside out: the core first, tested offline, then GitHub
 
 **Open items**
 
-- [ ] Confirm the deadline and deliverable format
-- [ ] Hear back on own gateway vs. proxy mode
-- [ ] Pick the LLM provider
-- [ ] Create the demo repos (`storefront` public, `payments-api` private) with planted fake secrets, a prompt-injection issue, and an issue containing a pasted log with a fake key and email
-- [ ] Create the fine-grained GitHub token for the two demo repos
+- [x] Confirm the deadline and deliverable format
+- [x] Hear back on own gateway vs. proxy mode
+- [x] Pick the LLM provider
+- [x] Create the demo repos (`storefront` public, `payments-api` private) with planted fake secrets, a prompt-injection issue, and an issue containing a pasted log with a fake key and email
+- [x] Create the fine-grained GitHub token for the two demo repos
 - [ ] If proxy mode is requested: pin a `github-mcp-server` version and build the translation table from its `tools/list`

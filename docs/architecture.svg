@@ -1,0 +1,84 @@
+<svg viewBox="0 0 1040 410" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .box { fill: #ffffff; stroke: #333333; stroke-width: 1.5; rx: 8; }
+    .band { fill: #f3f6fb; stroke: #4a5a78; stroke-width: 1.2; rx: 6; }
+    .outer { fill: none; stroke: #999999; stroke-width: 1.2; stroke-dasharray: 5,4; rx: 10; }
+    .title { font-size: 15px; font-weight: 600; fill: #1a1a1a; }
+    .label { font-size: 12.5px; fill: #1a1a1a; }
+    .sub { font-size: 11px; fill: #555555; }
+    .edge-label { font-size: 11px; fill: #444444; }
+    .arrow { stroke: #444444; stroke-width: 1.6; fill: none; marker-end: url(#arrowhead); }
+    .arrow-dashed { stroke: #888888; stroke-width: 1.3; fill: none; stroke-dasharray: 4,3; marker-end: url(#arrowhead); }
+    @media (prefers-color-scheme: dark) {
+      svg { background: #1e1e1e; }
+      .box { fill: #2a2a2a; stroke: #cccccc; }
+      .band { fill: #30384a; stroke: #9db4e0; }
+      .outer { stroke: #777777; }
+      .title { fill: #f0f0f0; }
+      .label { fill: #f0f0f0; }
+      .sub { fill: #aaaaaa; }
+      .edge-label { fill: #bbbbbb; }
+      .arrow, .arrow-dashed { stroke: #cccccc; }
+    }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#444444" />
+    </marker>
+  </defs>
+
+  <!-- Agents -->
+  <rect class="outer" x="30" y="90" width="230" height="140" />
+  <text class="sub" x="42" y="108">Streamlit app</text>
+  <rect class="box" x="45" y="118" width="200" height="45" />
+  <text class="label" x="60" y="144">Triage Agent</text>
+  <rect class="box" x="45" y="172" width="200" height="45" />
+  <text class="label" x="60" y="198">Review Agent</text>
+
+  <!-- Agents -> Gateway arrow -->
+  <path class="arrow" d="M260,160 L355,160" />
+  <text class="edge-label" x="258" y="145">MCP over HTTP</text>
+  <text class="edge-label" x="258" y="178">agent token +</text>
+  <text class="edge-label" x="258" y="191">session token (headers)</text>
+
+  <!-- Gateway outer -->
+  <rect class="outer" x="365" y="30" width="320" height="300" />
+  <text class="title" x="378" y="52">Gateway</text>
+
+  <rect class="band" x="382" y="65" width="286" height="55" />
+  <text class="label" x="395" y="87">Northbound</text>
+  <text class="sub" x="395" y="104">MCP server · filtered tool discovery</text>
+
+  <path class="arrow" d="M525,120 L525,140" />
+
+  <rect class="band" x="382" y="145" width="286" height="120" />
+  <text class="label" x="395" y="165">Core</text>
+  <text class="sub" x="395" y="182">authenticate (R01-R03)</text>
+  <text class="sub" x="395" y="197">resolve context</text>
+  <text class="sub" x="395" y="212">decide (R04-R12)</text>
+  <text class="sub" x="395" y="227">redact</text>
+  <text class="sub" x="395" y="242">audit (SQLite)</text>
+
+  <path class="arrow" d="M525,265 L525,285" />
+
+  <rect class="band" x="382" y="290" width="286" height="30" />
+  <text class="label" x="395" y="310">Southbound — RestBackend</text>
+
+  <!-- Gateway -> GitHub -->
+  <path class="arrow" d="M685,305 L775,305" />
+  <text class="edge-label" x="690" y="290">GitHub REST API</text>
+  <text class="edge-label" x="690" y="330">fine-grained PAT</text>
+
+  <!-- GitHub -->
+  <rect class="box" x="780" y="265" width="230" height="80" />
+  <text class="label" x="795" y="290">GitHub</text>
+  <text class="sub" x="795" y="307">storefront (public)</text>
+  <text class="sub" x="795" y="322">payments-api (private)</text>
+
+  <!-- Admin page -->
+  <rect class="box" x="45" y="340" width="200" height="50" />
+  <text class="label" x="60" y="368">Admin page</text>
+  <path class="arrow-dashed" d="M245,365 L300,365 L300,205 L375,205" />
+  <text class="edge-label" x="252" y="378">/admin/audit</text>
+  <text class="edge-label" x="252" y="392">/admin/agents/*/toggle</text>
+</svg>
