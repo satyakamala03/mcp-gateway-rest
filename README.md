@@ -2,9 +2,9 @@
 
 ![CI](https://github.com/satyakamala03/mcp-gateway-rest/actions/workflows/ci.yml/badge.svg)
 
-Two AI agents (Issue Triage, PR Review) reach GitHub only through one MCP gateway, which allows, denies or redacts each call based on agent identity, declared intent, the human user behind it, and the sensitivity of the data being requested. The LLM proposes tool calls; the gateway decides.
+Two AI agents (Issue Triage, PR Review) reach GitHub only through one MCP gateway. The LLM proposes tool calls; the gateway decides.
 
-Full design rationale is in [`docs/MCP Gateway Technical Design.md`](docs/MCP%20Gateway%20Technical%20Design.md). For a concise evaluator-facing summary — approach, key design decisions, what's built vs. deferred, fixes made during implementation, testing, scale, and language choice — see [`docs/technical-documentation.md`](docs/technical-documentation.md). This README covers what's actually built and how to run it.
+Evaluators: start at `docs/technical-documentation.md` (approach, decisions, architecture diagram, what’s built vs. deferred). This README is how to run and test it.
 
 ## What's built (v1 scope)
 
@@ -74,3 +74,7 @@ tests/
   scenarios/         # one file per demo case, full gateway + FakeBackend, real MCP transport
 scripts/run_demo_gateway.py   # dev-only: gateway wired to FakeBackend for local UI testing
 ```
+
+
+
+Full design rationale (pre-implementation): `docs/MCP Gateway Technical Design.md`
