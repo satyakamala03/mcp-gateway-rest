@@ -30,15 +30,6 @@ uv run streamlit run app/Home.py
 
 Without a GitHub token handy, `scripts/run_demo_gateway.py` runs the same app wired to `FakeBackend` instead of `RestBackend` -- useful for rehearsing the demo or developing the UI without touching real GitHub.
 
-### Docker
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-Gateway on `:8080`, Streamlit on `:8501`.
-
 ## Testing
 
 ```bash
@@ -74,7 +65,5 @@ tests/
   scenarios/         # one file per demo case, full gateway + FakeBackend, real MCP transport
 scripts/run_demo_gateway.py   # dev-only: gateway wired to FakeBackend for local UI testing
 ```
-
-
 
 Full design rationale (pre-implementation): `docs/MCP Gateway Technical Design.md`
