@@ -12,3 +12,7 @@ data/*.db
 htmlcov/
 *.log
 nohup.out
+
+# personal prep docs -- local use only, never pushed
+docs/demo_story.md
+docs/interview_prep_questions.md
