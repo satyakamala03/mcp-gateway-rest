@@ -4,7 +4,7 @@
 
 Two AI agents (Issue Triage, PR Review) reach GitHub only through one MCP gateway. The LLM proposes tool calls; the gateway decides.
 
-Evaluators: start at `docs/technical-documentation.md` (approach, decisions, architecture diagram, what’s built vs. deferred). This README is how to run and test it.
+Evaluators: start at [`docs/technical-documentation.md`](docs/technical-documentation.md) (approach, decisions, architecture diagram, what’s built vs. deferred). This README is how to run and test it.
 
 ## What's built (v1 scope)
 
