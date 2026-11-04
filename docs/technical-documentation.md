@@ -39,6 +39,16 @@ Scope for this version: the REST backend, the full decision engine, and every mu
 - **Tamper-evident (hash-chained) audit log** — same reasoning. The audit log itself is real and complete; it's just not chained.
 - **Redaction beyond the basic regex pass** — token-shaped strings and emails are redacted on every response; deeper content scanning wasn't needed for the two demo repos.
 
+## Fixes Made During Implementation
+
+A few things in the original design didn't survive contact with real code:
+
+- **`get_pr_diff`'s decision order** — the original design fetches the PR's changed-file list from GitHub before checking role/repo/intent, contradicting its own "decide before fetching" principle. Fixed by splitting the decision into `decide_phase1` (role/repo/intent/arg checks, no I/O) and `decide_phase2` (tier checks); the metadata lookup only runs if phase 1 passes, and a failure during that lookup fails closed rather than falling through to ALLOW.
+- **`policy.yaml` needed a `repos:` block** — the design referenced a repo registry for visibility (public/private) but never showed its schema. Added as a top-level `repos:` map, validated at load time against every repo referenced elsewhere in the file.
+- **`post_review_comment` has no `event` argument** — the canonical tool catalog lists this tool's args as `repo, number, body` only, but the policy YAML excerpt had a constraint as if `event` were a real argument. Removed — "comment only" is structural (the backend method can't approve anything), not an argument check.
+- **Post-ALLOW backend failures stay ALLOW** — if policy allows a call but the GitHub fetch then fails, the audit row keeps `outcome: ALLOW` plus a `fetch_error` field, distinct from a failure before the decision is finalized, which fails closed.
+- **Session expiry is a hard stop** — 15-minute JWT, no silent renewal.
+
 ## Testing
 
 Three layers: unit tests for the decision logic itself (no I/O), contract tests run against every backend, and scenario tests that run the entire gateway — real MCP transport, real auth headers, real audit log — against an in-memory GitHub stand-in. Every governance case below is a passing test, not a claim:
