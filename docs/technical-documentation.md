@@ -34,7 +34,7 @@ The piece that talks to GitHub is swappable behind one interface (`GitHubBackend
 
 Scope for this version: the REST backend, the full decision engine, and every must-have and should-have governance case — all implemented and proven by tests, not just designed. Listing what's deferred here is deliberate, not an oversight list: each one was a conscious cut, not something missed.
 
-- **Proxy mode (`McpBackend`)** — the interface exists; not built, because the REST path alone is enough to prove the policy engine, and the brief reads like a gateway that owns its tools.
+- **Proxy mode (**`McpBackend`**)** — the interface exists; not built, because the REST path alone is enough to prove the policy engine, and the brief reads like a gateway that owns its tools.
 - **Anomaly flag** — flagging unusual denial rates per agent. A stretch feature, cut to keep the core decision engine solid first.
 - **Tamper-evident (hash-chained) audit log** — same reasoning. The audit log itself is real and complete; it's just not chained.
 - **Redaction beyond the basic regex pass** — token-shaped strings and emails are redacted on every response; deeper content scanning wasn't needed for the two demo repos.
@@ -62,6 +62,22 @@ Three layers: unit tests for the decision logic itself (no I/O), contract tests 
 | Fail closed | `test_fail_closed.py` | DENY `R03` on an expired session; DENY `fail_closed` on a mid-decision failure |
 
 See [README → Testing](../README.md#testing) for the exact commands, including the live-GitHub contract tests.
+
+## Language Choice
+
+**Current version: Python** — an integration choice, not a performance one. The official MCP SDK is most mature here, and `pydantic`, `httpx`, `Starlette`, and Streamlit cover every other piece with no custom plumbing.
+
+**Commercially, the product isn't GitHub-specific** — it's a general MCP/data-platform governance layer (GitHub is just this demo's one backend). The swappable-backend pattern already built (`GitHubBackend` as a `Protocol`) is what has to generalize: one interface per platform, policy/audit core staying backend-agnostic as it already is. That shifts the language question from "what fits GitHub" to "what fits building many backend adapters safely."
+
+| Language | Strength | Weakness |
+|---|---|---|
+| Go | Goroutines make the `Scale` concurrency bug structurally hard to cause, not just avoidable by discipline; the standard language for this product category | Thinner MCP and schema-validation ecosystems than TS/Python |
+| TypeScript/Node | Closest to MCP's own reference ecosystem — most community servers are TS-first | Same single-threaded-event-loop exposure as Python |
+| Rust | Strongest safety guarantees, useful with many third-party credentials in play | Slower to build and review, smaller hiring pool |
+
+**My pick: Go.** TypeScript is the stronger ecosystem fit, but Go is the stronger reliability fit — it doesn't just make the blocking-call mistake in `Scale` less likely, it makes it structurally hard to cause at all, which matters more for a product whose entire pitch is trustworthy enforcement under load. Not urgent: Python is fine today, and the `Scale` fix (an async client) closes the same bug without a rewrite.
+
+**If the product already exists inside a company with an established stack**, that wins over any of the above — shared auth, observability, and deployment tooling matters more than this argument.
 
 ## Scale
 
