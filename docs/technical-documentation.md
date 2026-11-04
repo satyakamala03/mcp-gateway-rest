@@ -52,25 +52,25 @@ A few things in the original design didn't survive contact with real code:
 
 ## Testing
 
-Three layers: unit tests for the decision logic itself (no I/O), contract tests run against every backend, and scenario tests that run the entire gateway — real MCP transport, real auth headers, real audit log — against an in-memory GitHub stand-in. Every governance case below is a passing test, not a claim:
+Three layers: unit tests for the decision logic itself (no I/O), contract tests run against every backend, and scenario tests that run the entire gateway — real MCP transport, real auth headers, real audit log — against an in-memory GitHub stand-in. Every governance case below is a passing test, not a claim. Rule IDs below link to what each one actually checks in [Decision Procedure](#decision-procedure).
 
 | Demo case | Test | Result |
 |---|---|---|
 | Happy path | `test_happy_path.py` | ALLOW |
-| Unknown agent | `test_r01_unknown_agent.py` | DENY `R01` |
-| Intent spoofing | `test_intent_spoofing.py` | DENY `R07` |
-| Wrong resource type for intent | `test_r09_outside_intent.py` | DENY `R09` |
-| Sensitive path | `test_r08_secret_path.py` | DENY `R09` (direct read) / DENY `R08` (PR diff touching a secret file) |
-| Same call, different agents | `test_same_call_different_agents.py` | ALLOW for the review agent, DENY `R09` for the triage agent |
-| Default deny (unmapped tool) | `test_default_deny.py` | DENY `R06` |
-| Prompt injection | `test_prompt_injection.py` | DENY `R09` — the hijacked call is blocked regardless of what the issue body asked for |
+| Unknown agent | `test_r01_unknown_agent.py` | DENY [`R01`](#r01) |
+| Intent spoofing | `test_intent_spoofing.py` | DENY [`R07`](#r07) |
+| Wrong resource type for intent | `test_r09_outside_intent.py` | DENY [`R09`](#r09) |
+| Sensitive path | `test_r08_secret_path.py` | DENY [`R09`](#r09) (direct read) / DENY [`R08`](#r08) (PR diff touching a secret file) |
+| Same call, different agents | `test_same_call_different_agents.py` | ALLOW for the review agent, DENY [`R09`](#r09) for the triage agent |
+| Default deny (unmapped tool) | `test_default_deny.py` | DENY [`R06`](#r06) |
+| Prompt injection | `test_prompt_injection.py` | DENY [`R09`](#r09) — the hijacked call is blocked regardless of what the issue body asked for |
 | Audit trail | `test_audit_trail.py` | Exactly one row per call, including the two-step `get_pr_diff` lookup |
-| Repo-attribute access control | `test_repo_abac.py` | DENY `R10` for a user without repo access, ALLOW for one with it |
-| Read vs. write | `test_read_vs_write.py` | DENY `R07` for a write outside the intent, ALLOW for one inside it |
+| Repo-attribute access control | `test_repo_abac.py` | DENY [`R10`](#r10) for a user without repo access, ALLOW for one with it |
+| Read vs. write | `test_read_vs_write.py` | DENY [`R07`](#r07) for a write outside the intent, ALLOW for one inside it |
 | Filtered tool discovery | `test_filtered_discovery.py` | Catalog is filtered per agent; enforcement still applies even if a hidden tool is called directly |
 | Human identity propagation | `test_identity_propagation.py` | Same agent, same intent, different user → different outcome |
-| Kill switch | `test_kill_switch.py` | DENY `R02`, takes effect immediately, other agents unaffected |
-| Fail closed | `test_fail_closed.py` | DENY `R03` on an expired session; DENY `fail_closed` on a mid-decision failure |
+| Kill switch | `test_kill_switch.py` | DENY [`R02`](#r02), takes effect immediately, other agents unaffected |
+| Fail closed | `test_fail_closed.py` | DENY [`R03`](#r03) on an expired session; DENY `fail_closed` on a mid-decision failure |
 
 See [README → Testing](../README.md#testing) for the exact commands, including the live-GitHub contract tests.
 
@@ -102,3 +102,33 @@ Numbers below are architectural estimates from how each piece is actually built,
 | MCP sessions | Up to 10,000 concurrent sessions (the MCP SDK's own built-in default) | Not a near-term constraint | Pass `max_sessions=N` to `StreamableHTTPSessionManager` in `gateway/server.py` if it ever becomes one — not currently exposed as config, so this is a one-line code change |
 
 At the current scale — 2 configured users, 2 agents, 2 demo repos — none of this is felt: a handful of people clicking through the demo at once, each waiting on their own response, stays well under every limit above.
+
+## Decision Procedure
+
+Each tool call runs through ordered checks. The first check that fails denies the call and names its rule. A call that passes every check is allowed. Every outcome writes exactly one audit row.
+
+Grouped below by the order they actually run in code — not a flat R01→R12 list. As covered in `Fixes Made During Implementation` above, R08 and R11 need a resolved tier, which for `get_pr_diff` isn't known until a GitHub call runs; every cheap, context-free check runs first so an unauthorized caller is denied before that call ever happens.
+
+**Phase 1 — cheap, context-free (`gateway/core/auth.py` for R01–R03, `gateway/core/policy.py`'s `decide_phase1` for the rest):**
+
+1. <a id="r01"></a>**R01 Agent authenticated:** the agent token is valid, or DENY `unknown_agent`.
+2. <a id="r02"></a>**R02 Kill switch:** the agent is not disabled, or DENY `agent_disabled`.
+3. <a id="r03"></a>**R03 Session token valid:** the session token is signed by the Streamlit app and not expired, or DENY `invalid_session`. It gives the user and the declared intent.
+4. <a id="r04"></a>**R04 Intent registered:** the intent belongs to this agent, or DENY `intent_not_registered`.
+5. <a id="r05"></a>**R05 User may use agent:** the user's role is in the agent's allowed roles, or DENY `user_not_entitled`.
+6. <a id="r06"></a>**R06 Tool known:** the tool is in the canonical tool catalog, or DENY `unmapped_tool`.
+7. <a id="r07"></a>**R07 Argument constraints:** for example, labels only; otherwise DENY `arg_constraint`.
+8. <a id="r09"></a>**R09 Within intent:** the resource type and action are in the intent, or DENY `outside_intent`.
+9. <a id="r10"></a>**R10 Repo permitted:** the repo is in both the intent's and the user's lists, or DENY `repo_not_permitted`.
+10. <a id="r12"></a>**R12 Write permitted:** for writes, the user may perform this write, or DENY `write_not_permitted`.
+
+**Phase 2 — tier-dependent (`decide_phase2`; only reached once phase 1 passes):**
+
+11. <a id="r08"></a>**R08 Restricted data:** a T3 resource is always DENY `restricted_data`, no override.
+12. <a id="r11"></a>**R11 Tier permitted:** the tier is at or below the lower of the intent's and the user's caps, or DENY `tier_exceeded`.
+
+**ALLOW:** forward the call to the backend, run the response through redaction, then return it.
+
+- **Fail closed:** any error, such as a bad policy file, an unreachable upstream, or a parse failure, returns DENY `fail_closed`. Never ALLOW.
+- **Filtered discovery:** `tools/list` returns only the tools mapped to resource types in the agent's registered intents. Discovery is a convenience, not the control; the call-time checks above enforce regardless.
+- **Audit row fields:** timestamp, agent, user, intent, tool, repo, resource type, tier, action, decision, rule ID, latency.
