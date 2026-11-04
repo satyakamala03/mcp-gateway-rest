@@ -79,6 +79,8 @@ Every command references `$AGENT_TOKEN_TRIAGE_AGENT`,
 | 20 | Intent spoofing via forged argument | R07/R09 (defense in depth) | The signed session token is what's checked, not anything in the call's arguments — there's no UI path where the LLM could even attempt this meaningfully | Raw MCP call with an extra `"intent": "..."` key stuffed into the tool arguments — confirm the gateway ignores it and still judges by the signed session intent | [#20](#scenario-20-intent-spoofing-via-forged-argument-r07) |
 | 21 | Fail closed — corrupt policy file | fail_closed | Requires restarting the gateway process with a broken config, not a runtime action | Temporarily break `config/policy.yaml` (e.g. bad YAML) and try to start the gateway — it should refuse to start at all, not start with a partial policy | [#21](#scenario-21-fail-closed-corrupt-policy-file) (shell, not curl) |
 | 22 | Fail closed — backend error before a decision is finalized | fail_closed | Needs a PR number that doesn't exist, which the LLM won't guess on its own in a normal conversation | Raw MCP call: `get_pr_diff` on a nonexistent PR number in a real repo → should deny `fail_closed`, not crash | [#22](#scenario-22-fail-closed-metadata-lookup-on-nonexistent-pr) |
+| 23 | Hot policy reload — successful | — | There's no chat-reachable way to trigger a reload; it's an admin action | Admin page: click "Reload Policy" after editing `policy.yaml` on disk → the next call reflects the change immediately, no restart | [#23](#scenario-23-hot-policy-reload-successful) |
+| 24 | Hot policy reload — fails closed | fail_closed | Same reason as #23 | Corrupt `policy.yaml`, click "Reload Policy" → rejected with the parse error, last-known-good policy keeps serving | [#24](#scenario-24-hot-policy-reload-fails-closed) |
 
 ### Copy-pasteable commands
 
@@ -493,6 +495,51 @@ curl -s -X POST http://127.0.0.1:8080/mcp/ \
 
 Expect: `{"decision": "DENY", "rule_id": "fail_closed", "reason": "metadata lookup failed: ..."}`
 
+#### Scenario 23: Hot policy reload, successful
+
+**Back up `config/policy.yaml` first** -- this edits the real file.
+
+```bash
+cp config/policy.yaml /tmp/policy.yaml.backup
+
+# 1. baseline: bob has no payments-api access
+#    (run the bob / payments-api issue 1 call from scenario 5 -- expect DENY R10)
+
+# 2. widen bob's repos on disk
+sed -i '' 's/bob: { role: support, repos: \[storefront\]/bob: { role: support, repos: [storefront, payments-api]/' config/policy.yaml
+
+# 3. reload -- either click "Reload Policy" on the Admin page, or:
+curl -s -X POST http://127.0.0.1:8080/admin/policy/reload \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 4. re-run the same bob / payments-api call -- now ALLOW, no restart happened
+
+# 5. restore and reload again
+cp /tmp/policy.yaml.backup config/policy.yaml
+curl -s -X POST http://127.0.0.1:8080/admin/policy/reload \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Expect: reload response `{"status":"reloaded","agents":["triage-agent","review-agent"]}`; the bob/payments-api call flips from `DENY R10` to `ALLOW` after step 3, and back after step 5.
+
+#### Scenario 24: Hot policy reload, fails closed
+
+**Back up `config/policy.yaml` first** -- this edits the real file.
+
+```bash
+cp config/policy.yaml /tmp/policy.yaml.backup
+echo "not: [valid, yaml, structure" > config/policy.yaml
+
+curl -s -X POST http://127.0.0.1:8080/admin/policy/reload \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# ... go try any normal chat call -- the gateway keeps working on the old policy ...
+
+cp /tmp/policy.yaml.backup config/policy.yaml
+```
+
+Expect: reload response is a 400 with a YAML parse error in `"error"`; every other call keeps working throughout -- the gateway process never needed to restart and never partially applied the broken file.
+
 ## 4. Admin page checks
 
 - [x] After running scenarios 1–12, open the Admin page and confirm every
@@ -513,6 +560,9 @@ Expect: `{"decision": "DENY", "rule_id": "fail_closed", "reason": "metadata look
   ```
   state shown on the page matches what you just did.
   ```
+- [ ] Run scenario 23 (successful reload) and scenario 24 (fails closed)
+      via the "Reload Policy" button, not just curl -- confirm the success
+      and error messages render on the page as expected.
 
 ## 5. What this does *not* cover
 

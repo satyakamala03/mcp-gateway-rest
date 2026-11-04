@@ -19,10 +19,10 @@ from gateway.server import GatewayDeps, create_app
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-CONFIG_DIR = "config"
+CONFIG_DIR = Path("config")
 
-policy = load_policy(f"{CONFIG_DIR}/policy.yaml")
-classification = load_classification(f"{CONFIG_DIR}/classification.yaml")
+policy = load_policy(CONFIG_DIR / "policy.yaml")
+classification = load_classification(CONFIG_DIR / "classification.yaml")
 audit = AuditLog("data/demo_audit.db")
 token_hashes = {
     "triage-agent": hashlib.sha256(os.environ["AGENT_TOKEN_TRIAGE_AGENT"].encode()).hexdigest(),
@@ -35,7 +35,7 @@ deps = GatewayDeps(
     policy=policy, classification=classification, audit=audit,
     token_store=token_store, kill_switch=kill_switch,
     signing_key=os.environ["SESSION_SIGNING_KEY"], admin_token=os.environ["ADMIN_TOKEN"],
-    backend=FakeBackend(),
+    backend=FakeBackend(), config_dir=CONFIG_DIR,
 )
 
 app = create_app(deps)

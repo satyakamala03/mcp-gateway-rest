@@ -34,6 +34,14 @@ for col, (agent_id, enabled) in zip(cols, agents.items(), strict=False):
             _post(f"/admin/agents/{agent_id}/toggle", {"enabled": new_value})
             st.rerun()
 
+st.subheader("Policy")
+if st.button("Reload Policy"):
+    resp = httpx.post(f"{GATEWAY_URL}/admin/policy/reload", headers=HEADERS, timeout=10.0)
+    if resp.status_code == 200:
+        st.success(f"Reloaded. Agents: {', '.join(resp.json()['agents'])}")
+    else:
+        st.error(f"Reload rejected, kept the previous policy: {resp.json()['error']}")
+
 st.subheader("Audit log")
 col1, col2, col3 = st.columns(3)
 agent_filter = col1.selectbox("Agent", ["(all)", *agents.keys()])

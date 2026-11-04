@@ -14,6 +14,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from mcp import types
@@ -54,6 +55,7 @@ class GatewayDeps:
     signing_key: str
     admin_token: str
     backend: GitHubBackend
+    config_dir: Path  # where policy.yaml / classification.yaml live, for admin_reload_policy
 
 
 def _agent_catalog(agent_id: str, policy: PolicyConfig) -> list[types.Tool]:
@@ -389,12 +391,34 @@ def create_app(deps: GatewayDeps) -> Starlette:
         deps.audit.set_agent_enabled(agent_id, bool(body.get("enabled", True)))
         return JSONResponse({"agent_id": agent_id, "enabled": bool(body.get("enabled", True))})
 
+    async def admin_reload_policy(request: Request) -> JSONResponse:
+        unauthorized = _require_admin(request, deps)
+        if unauthorized:
+            return unauthorized
+
+        from gateway.core.config import PolicyLoadError, load_classification, load_policy
+
+        try:
+            new_policy = load_policy(deps.config_dir / "policy.yaml")
+            new_classification = load_classification(deps.config_dir / "classification.yaml")
+        except PolicyLoadError as exc:
+            # Fail closed: a bad reload attempt never takes effect -- the
+            # gateway keeps serving the last-known-good policy/classification.
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+        deps.policy = new_policy
+        deps.classification = new_classification
+        global _CLASSIFICATION_FOR_FILTER
+        _CLASSIFICATION_FOR_FILTER = new_classification
+        return JSONResponse({"status": "reloaded", "agents": list(new_policy.agents)})
+
     app = Starlette(
         routes=[
             Mount("/mcp", app=mcp_asgi),
             Route("/admin/audit", admin_audit, methods=["GET"]),
             Route("/admin/agents", admin_agents, methods=["GET"]),
             Route("/admin/agents/{agent_id}/toggle", admin_toggle, methods=["POST"]),
+            Route("/admin/policy/reload", admin_reload_policy, methods=["POST"]),
         ],
         lifespan=lambda app: session_manager.run(),
     )
@@ -406,8 +430,6 @@ def create_app(deps: GatewayDeps) -> Starlette:
 
 
 def build_deps_from_env() -> GatewayDeps:
-    from pathlib import Path
-
     from dotenv import load_dotenv
 
     from gateway.backends.rest import RestBackend
@@ -429,6 +451,7 @@ def build_deps_from_env() -> GatewayDeps:
         policy=policy, classification=classification, audit=audit,
         token_store=token_store, kill_switch=kill_switch,
         signing_key=signing_key, admin_token=admin_token, backend=backend,
+        config_dir=config_dir,
     )
 
 

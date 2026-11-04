@@ -29,6 +29,7 @@ The piece that talks to GitHub is swappable behind one interface (`GitHubBackend
 | Failure mode | Fail closed everywhere: bad config, expired session, a mid-decision exception | A security control that fails open isn't a security control | Fail open for availability |
 | Audit storage | SQLite, append-only, one row per decision | Queryable with plain SQL for the admin page, zero extra infrastructure — one file, no separate database service to stand up for two users and two repos | Plain log files (not queryable); Postgres or another client-server DB (real option once usage grows past one process — see Scale) |
 | Least privilege | Filtered tool discovery *and* call-time enforcement | The agent doesn't even see tools it can't use, and the rule still fires if it tries anyway | Discovery filtering alone, with no call-time check |
+| Policy reload | Manual, admin-triggered (`POST /admin/policy/reload`), not a background watcher | Predictable and easy to demo; a bad reload attempt fails closed — the error is returned and the last-known-good policy keeps serving, nothing in between | An automatic file-watcher — more moving parts, harder to reason about a reload racing an in-flight request |
 
 ## Built vs. Deferred
 

@@ -44,6 +44,7 @@ def deps(tmp_path):
         policy=policy, classification=classification, audit=audit,
         token_store=token_store, kill_switch=kill_switch,
         signing_key=SIGNING_KEY, admin_token=ADMIN_TOKEN, backend=backend,
+        config_dir=CONFIG_DIR,
     )
 
 

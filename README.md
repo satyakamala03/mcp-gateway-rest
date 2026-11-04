@@ -1,6 +1,6 @@
 # MCP Gateway
 
-[![CI](https://github.com/satyakamala03/mcp-gateway-rest/actions/workflows/ci.yml/badge.svg)](https://github.com/satyakamala03/mcp-gateway-rest/actions/workflows/ci.yml)
+![CI](https://github.com/satyakamala03/mcp-gateway-rest/actions/workflows/ci.yml/badge.svg)
 
 Two AI agents (Issue Triage, PR Review) reach GitHub only through one MCP gateway, which allows, denies or redacts each call based on agent identity, declared intent, the human user behind it, and the sensitivity of the data being requested. The LLM proposes tool calls; the gateway decides.
 
@@ -10,6 +10,7 @@ Full design rationale is in [`docs/MCP Gateway Technical Design.md`](docs/MCP%20
 
 - **Backend: own-gateway / REST mode only.** `RestBackend` calls the GitHub REST API directly. A proxy backend in front of GitHub's official MCP server (`McpBackend`) is **not implemented** -- `gateway/backends/base.py`'s `GitHubBackend` protocol is the only trace of that seam. To add it later: implement every protocol method against an MCP client pointed at `github-mcp-server`, register it as `gateway/backends/mcp_proxy.py:McpBackend`, and flip `config/gateway.yaml`'s `backend:` field to `mcp`. No other code changes -- the policy engine, canonical catalog, and both agents are identical in both modes by design.
 - **All must-have and should-have demo cases**, proven as offline scenario tests against `FakeBackend` through the real MCP transport (see `tests/scenarios/`), plus one live smoke test against `RestBackend` and the real demo repos (`tests/contract/`, marked `integration`).
+- **Hot policy reload**: `POST /admin/policy/reload` (admin-token gated) re-reads `policy.yaml`/`classification.yaml` and swaps them in without restarting the process. Fails closed -- an invalid file is rejected with the parse error and the last-known-good policy keeps serving. Also a "Reload Policy" button on the Admin page.
 - **Nice-to-haves cut for v1**: output redaction beyond the basic regex pass, an anomaly flag, and a tamper-evident hash-chained audit log are not built.
 
 ## Running it
