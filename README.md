@@ -1,5 +1,7 @@
 # MCP Gateway
 
+[![CI](https://github.com/satyakamala03/mcp-gateway-rest/actions/workflows/ci.yml/badge.svg)](https://github.com/satyakamala03/mcp-gateway-rest/actions/workflows/ci.yml)
+
 Two AI agents (Issue Triage, PR Review) reach GitHub only through one MCP gateway, which allows, denies or redacts each call based on agent identity, declared intent, the human user behind it, and the sensitivity of the data being requested. The LLM proposes tool calls; the gateway decides.
 
 Full design rationale is in [`docs/MCP Gateway Technical Design.md`](docs/MCP%20Gateway%20Technical%20Design.md). For a concise evaluator-facing summary — approach, key design decisions, what's built vs. deferred, fixes made during implementation, testing, scale, and language choice — see [`docs/technical-documentation.md`](docs/technical-documentation.md). This README covers what's actually built and how to run it.
@@ -50,6 +52,8 @@ uv run pytest tests/contract -m integration      # explicitly run the live-GitHu
 ```
 
 `app/` is excluded from `mypy` for now -- Streamlit's multipage convention (no `__init__.py`, `app/common.py` imported both as `app.common` and as a bare module from the page scripts) trips mypy's module-resolution, not a real type issue.
+
+CI (`.github/workflows/ci.yml`) runs lint, type-check, and `tests/unit`/`tests/scenarios` on every push and PR -- no secrets needed, since those run fully offline against `FakeBackend`. `tests/contract` (including the live-GitHub integration tests) stays a local-only, manual check.
 
 Every demo case (must-have and should-have) is a scenario test in `tests/scenarios/`, run through the real MCP streamable-HTTP transport against `FakeBackend` -- not an in-memory shortcut, so the auth headers, filtered discovery, and audit rows are exercised exactly as production carries them.
 
