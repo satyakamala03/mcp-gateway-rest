@@ -543,23 +543,15 @@ Expect: reload response is a 400 with a YAML parse error in `"error"`; every oth
 ## 4. Admin page checks
 
 - [x] After running scenarios 1–12, open the Admin page and confirm every
-  ```
-  call you made shows up as exactly one row, with the right
-  agent/user/intent/tool/decision/rule_id.
-  ```
+      call you made shows up as exactly one row, with the right
+      agent/user/intent/tool/decision/rule_id.
 - [x] Confirm scenario 8 (the sensitive PR diff) shows `tier: T3` and that
-  ```
-  `paths_checked` includes `.env` — proof the metadata lookup actually
-  ran and classified correctly.
-  ```
+      `paths_checked` includes `.env` — proof the metadata lookup actually
+      ran and classified correctly.
 - [x] Filter by agent, filter by decision (ALLOW vs DENY), confirm the
-  ```
-  filters actually narrow the table.
-  ```
+      filters actually narrow the table.
 - [x] Toggle a kill switch off and on (scenario 14) and confirm the toggle
-  ```
-  state shown on the page matches what you just did.
-  ```
+      state shown on the page matches what you just did.
 - [ ] Run scenario 23 (successful reload) and scenario 24 (fails closed)
       via the "Reload Policy" button, not just curl -- confirm the success
       and error messages render on the page as expected.
@@ -567,7 +559,7 @@ Expect: reload response is a 400 with a YAML parse error in `"error"`; every oth
 ## 5. What this does *not* cover
 
 - Redaction (nice-to-have, not built beyond the basic regex pass — no
-fixture data was planted specifically to trigger it).
+  fixture data was planted specifically to trigger it).
 - Anomaly flag, tamper-evident audit log — explicitly cut from v1 scope.
 - Proxy mode (`backend: mcp`) — not built; `GitHubBackend` protocol is the
-only trace of that seam.
+  only trace of that seam.
