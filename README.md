@@ -39,12 +39,17 @@ Gateway on `:8080`, Streamlit on `:8501`.
 ## Testing
 
 ```bash
+uv run ruff check .                              # lint
+uv run mypy gateway agents                       # type-check (core + agents; app/ excluded, see below)
+
 uv run pytest tests/unit tests/scenarios        # offline, no credentials needed
 
 set -a && source .env && set +a
 uv run pytest tests/contract                     # FakeBackend always; RestBackend only with GITHUB_TOKEN/GITHUB_OWNER set
 uv run pytest tests/contract -m integration      # explicitly run the live-GitHub checks
 ```
+
+`app/` is excluded from `mypy` for now -- Streamlit's multipage convention (no `__init__.py`, `app/common.py` imported both as `app.common` and as a bare module from the page scripts) trips mypy's module-resolution, not a real type issue.
 
 Every demo case (must-have and should-have) is a scenario test in `tests/scenarios/`, run through the real MCP streamable-HTTP transport against `FakeBackend` -- not an in-memory shortcut, so the auth headers, filtered discovery, and audit rows are exercised exactly as production carries them.
 

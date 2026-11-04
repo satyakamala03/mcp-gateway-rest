@@ -79,7 +79,9 @@ def test_secret_path_first_match_wins_docs_env(policy, classification):
     # docs/.env must classify as secret (T3), not docs (T0) -- path rules
     # run most-restrictive-first. Still denied via R09 for the same reason
     # as above.
-    call = make_call("alice", "review-agent", "explain_code", "read_file", repo="storefront", path="docs/.env")
+    call = make_call(
+        "alice", "review-agent", "explain_code", "read_file", repo="storefront", path="docs/.env"
+    )
     context = ctx(policy, classification, "read_file", repo="storefront", path="docs/.env")
     assert context.resource_type == "secret"
     assert context.tier == "T3"
@@ -110,10 +112,14 @@ def test_r09_outside_intent_same_call_different_agents(policy, classification):
     context = ctx(policy, classification, "read_file", repo="storefront", path="src/app.py")
     assert context.resource_type == "code"
 
-    review_call = make_call("alice", "review-agent", "explain_code", "read_file", repo="storefront", path="src/app.py")
+    review_call = make_call(
+        "alice", "review-agent", "explain_code", "read_file", repo="storefront", path="src/app.py"
+    )
     assert decide(review_call, context, policy).outcome == "ALLOW"
 
-    triage_call = make_call("alice", "triage-agent", "triage_issues", "read_file", repo="storefront", path="src/app.py")
+    triage_call = make_call(
+        "alice", "triage-agent", "triage_issues", "read_file", repo="storefront", path="src/app.py"
+    )
     d = decide(triage_call, context, policy)
     assert d.outcome == "DENY"
     assert d.rule_id == "R09"
@@ -131,7 +137,9 @@ def test_r10_repo_not_permitted(policy, classification):
 def test_r09_outside_intent_for_ungranted_resource_type(policy, classification):
     # "config" is never in any intent's read list, so this denies at R09,
     # not R11 -- even though alice's own max_tier (T2) could cover it.
-    call = make_call("alice", "review-agent", "review_pr", "read_file", repo="payments-api", path="config/prod.yaml")
+    call = make_call(
+        "alice", "review-agent", "review_pr", "read_file", repo="payments-api", path="config/prod.yaml"
+    )
     context = ctx(policy, classification, "read_file", repo="payments-api", path="config/prod.yaml")
     assert context.tier == "T2"
     d = decide(call, context, policy)
@@ -161,7 +169,9 @@ def test_r07_write_outside_intent_write_list(policy, classification):
     # find_duplicates grants no writes at all, so add_labels is denied at
     # R07 (the intent simply has no constraint entry for this write) before
     # repo/tier/user-write checks are ever reached.
-    call = make_call("bob", "triage-agent", "find_duplicates", "add_labels", repo="storefront", number=1, labels=["bug"])
+    call = make_call(
+        "bob", "triage-agent", "find_duplicates", "add_labels", repo="storefront", number=1, labels=["bug"]
+    )
     context = ctx(policy, classification, "add_labels", repo="storefront", number=1)
     d = decide(call, context, policy)
     assert d.outcome == "DENY"
@@ -195,7 +205,9 @@ def test_r12_write_not_permitted(policy, classification):
             "carol": UserConfig(role="support", repos=["storefront"], max_tier="T1", write=[]),
         },
     )
-    call = make_call("carol", "triage-agent", "triage_issues", "add_labels", repo="storefront", number=1, labels=["bug"])
+    call = make_call(
+        "carol", "triage-agent", "triage_issues", "add_labels", repo="storefront", number=1, labels=["bug"]
+    )
     context = ctx(local_policy, classification, "add_labels", repo="storefront", number=1)
     d = decide(call, context, local_policy)
     assert d.outcome == "DENY"
@@ -203,7 +215,9 @@ def test_r12_write_not_permitted(policy, classification):
 
 
 def test_allow_happy_path(policy, classification):
-    call = make_call("bob", "triage-agent", "triage_issues", "add_labels", repo="storefront", number=1, labels=["bug"])
+    call = make_call(
+        "bob", "triage-agent", "triage_issues", "add_labels", repo="storefront", number=1, labels=["bug"]
+    )
     context = ctx(policy, classification, "add_labels", repo="storefront", number=1)
     d = decide(call, context, policy)
     assert d.outcome == "ALLOW"

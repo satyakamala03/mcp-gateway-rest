@@ -8,7 +8,7 @@ and test_repo_abac.py respectively.)
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 
@@ -16,7 +16,7 @@ from tests.scenarios.conftest import SIGNING_KEY, gateway_session
 
 
 async def test_expired_session_denied(deps):
-    expired = datetime.now(timezone.utc) - timedelta(minutes=30)
+    expired = datetime.now(UTC) - timedelta(minutes=30)
     stale_token = jwt.encode(
         {
             "user": "alice", "agent": "review-agent", "intent": "explain_code",

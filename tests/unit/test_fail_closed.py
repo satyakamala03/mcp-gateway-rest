@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import pytest
 
-from gateway.core.auth import AuthError
-from gateway.core.config import PolicyLoadError, load_policy
 from gateway.backends.base import BackendError
 from gateway.backends.fake import FakeBackend
+from gateway.core.config import PolicyLoadError, load_policy
 
 
 def test_corrupt_policy_file_fails_to_load(tmp_path):

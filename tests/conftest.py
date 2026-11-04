@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -22,7 +22,7 @@ def classification():
 
 
 def make_session(user: str, agent: str, intent: str) -> SessionClaims:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return SessionClaims(
         user=user,
         agent=agent,

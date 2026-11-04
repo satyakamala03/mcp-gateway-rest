@@ -51,7 +51,9 @@ def test_resolve_context_tool_name_classification(policy, classification):
 
 
 def test_resolve_context_write_action(policy, classification):
-    ctx = resolve_context("add_labels", {"repo": "storefront", "number": 1, "labels": ["bug"]}, policy, classification)
+    ctx = resolve_context(
+        "add_labels", {"repo": "storefront", "number": 1, "labels": ["bug"]}, policy, classification
+    )
     assert ctx.action == "write"
 
 

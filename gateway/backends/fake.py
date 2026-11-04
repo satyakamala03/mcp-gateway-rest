@@ -10,7 +10,7 @@ from gateway.backends.models import Comment, Commit, FileContent, Issue, PrDiff,
 
 
 class FakeBackend:
-    def __init__(self):
+    def __init__(self) -> None:
         self.files: dict[tuple[str, str], str] = {
             ("storefront", "README.md"): "# Storefront\n\nPublic demo repo.",
             ("storefront", "src/app.py"): "def handler():\n    return 'ok'\n",

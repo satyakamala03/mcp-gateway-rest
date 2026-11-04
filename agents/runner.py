@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 import httpx
 from mcp.client.session import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from mcp.types import TextContent
 
 from agents.llm import complete
 
@@ -98,7 +99,12 @@ class GatewayAgent:
 
             for tu in response.tool_uses:
                 result = await session.call_tool(tu.name, tu.input)
-                text = result.content[0].text if result.content else "{}"
+                first_block = result.content[0] if result.content else None
+                # The gateway always replies with a single TextContent block
+                # (see gateway/server.py's _deny_result/_success_result/
+                # _fetch_error_result); the other MCP content types are
+                # never produced here.
+                text = first_block.text if isinstance(first_block, TextContent) else "{}"
                 try:
                     parsed = json.loads(text)
                 except (ValueError, IndexError):

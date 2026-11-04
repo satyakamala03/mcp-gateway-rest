@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 from openai import OpenAI
 
@@ -98,11 +99,16 @@ def _to_openai_tools(tools: list[dict]) -> list[dict]:
 
 
 def complete(system: str, messages: list[dict], tools: list[dict]) -> LlmResponse:
+    # The messages/tools shapes above are kept as plain dicts on purpose --
+    # this module's whole job is translating a provider-neutral shape into
+    # whatever the SDK wants. The SDK itself validates them at the API
+    # boundary; `cast` just tells mypy to stop checking against its exact
+    # TypedDict unions here.
     response = _get_client().chat.completions.create(
         model=MODEL,
         max_completion_tokens=MAX_TOKENS,
-        messages=_to_openai_messages(system, messages),
-        tools=_to_openai_tools(tools) if tools else None,
+        messages=cast(Any, _to_openai_messages(system, messages)),
+        tools=cast(Any, _to_openai_tools(tools) if tools else None),
     )
     choice = response.choices[0]
     message = choice.message
@@ -114,6 +120,7 @@ def complete(system: str, messages: list[dict], tools: list[dict]) -> LlmRespons
             input=json.loads(tc.function.arguments) if tc.function.arguments else {},
         )
         for tc in (message.tool_calls or [])
+        if tc.type == "function"  # we only ever request function-type tools
     ]
 
     return LlmResponse(

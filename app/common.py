@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import streamlit as st
@@ -84,14 +84,14 @@ def render_agent_page(agent_id: str, display_name: str) -> None:
             "user": user,
             "intent": intent,
             "token": mint_session(user, agent_id, intent),
-            "minted_at": datetime.now(timezone.utc),
+            "minted_at": datetime.now(UTC),
             "history": [],
             "turns": [],
         }
 
     state = st.session_state.get(session_key)
     expired = state is not None and (
-        datetime.now(timezone.utc) - state["minted_at"] > SESSION_TTL
+        datetime.now(UTC) - state["minted_at"] > SESSION_TTL
     )
     if expired:
         st.warning("Session expired after 15 minutes. Pick your identity again to continue.")
@@ -100,13 +100,20 @@ def render_agent_page(agent_id: str, display_name: str) -> None:
     if state is None:
         st.subheader("Start a session")
         user = st.selectbox("Who are you?", users_allowed_for(agent_id), key=f"{key}_user")
-        intent = st.selectbox("What have you authorized this session to do?", intents_for(agent_id), key=f"{key}_intent")
+        intent = st.selectbox(
+            "What have you authorized this session to do?",
+            intents_for(agent_id),
+            key=f"{key}_intent",
+        )
         if st.button("Start session", key=f"{key}_start"):
             _start_session(user, intent)
             st.rerun()
         return
 
-    st.caption(f"Signed in as **{state['user']}**, intent **{state['intent']}** -- expires 15 min after session start.")
+    st.caption(
+        f"Signed in as **{state['user']}**, intent **{state['intent']}** "
+        "-- expires 15 min after session start."
+    )
     if st.button("End session", key=f"{key}_end"):
         del st.session_state[session_key]
         st.rerun()
@@ -115,7 +122,10 @@ def render_agent_page(agent_id: str, display_name: str) -> None:
         with st.chat_message(turn["role"]):
             st.write(turn["text"])
             for call in turn.get("tool_calls", []):
-                badge = "🟢 ALLOW" if not call["is_error"] else "🔴 DENY" if call["decision"] == "DENY" else "🟡 ERROR"
+                if call["is_error"]:
+                    badge = "🔴 DENY" if call["decision"] == "DENY" else "🟡 ERROR"
+                else:
+                    badge = "🟢 ALLOW"
                 label = f"{badge} · `{call['tool']}`"
                 if call.get("rule_id"):
                     label += f" · rule `{call['rule_id']}`"

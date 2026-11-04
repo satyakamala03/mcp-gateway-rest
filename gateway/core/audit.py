@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gateway.core.models import AuditRecord, DataContext, Decision
@@ -68,7 +68,7 @@ class AuditLog:
         redactions: int = 0,
         fetch_error: str | None = None,
     ) -> AuditRecord:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         paths_checked_json = (
             json.dumps(context.paths_checked)
             if context.paths_checked is not None
@@ -152,7 +152,7 @@ class AuditLog:
             return bool(row[0]) if row else True  # default enabled
 
     def set_agent_enabled(self, agent_id: str, enabled: bool) -> None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._connect() as conn:
             conn.execute(
                 """INSERT INTO agent_state (agent_id, enabled, updated_at)

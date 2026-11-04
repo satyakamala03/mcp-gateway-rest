@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from pydantic import ValidationError
@@ -41,7 +42,7 @@ class AgentTokenStore:
         self._token_hashes = token_hashes  # agent_id -> sha256 hex digest
 
     @classmethod
-    def from_env(cls, agent_ids: list[str]) -> "AgentTokenStore":
+    def from_env(cls, agent_ids: list[str]) -> AgentTokenStore:
         import os
 
         hashes = {}
@@ -77,7 +78,7 @@ class KillSwitch:
     every call; takes effect immediately; other agents unaffected.
     """
 
-    def __init__(self, is_enabled: callable):
+    def __init__(self, is_enabled: Callable[[str], bool]):
         self._is_enabled = is_enabled
 
     def check(self, agent_id: str) -> None:
@@ -96,15 +97,7 @@ def mint_session_token(
     now: datetime | None = None,
 ) -> str:
     """Called by the Streamlit app, never by agent code or the LLM."""
-    now = now or datetime.now(timezone.utc)
-    claims = {
-        "user": user,
-        "agent": agent,
-        "intent": intent,
-        "session_id": session_id,
-        "issued_at": now.isoformat(),
-        "expires_at": (now + SESSION_TTL).isoformat(),
-    }
+    now = now or datetime.now(UTC)
     return jwt.encode(
         {
             "user": user,
@@ -143,8 +136,8 @@ def verify_session(
             agent=payload["agent"],
             intent=payload["intent"],
             session_id=payload["session_id"],
-            issued_at=datetime.fromtimestamp(payload["iat"], tz=timezone.utc),
-            expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
+            issued_at=datetime.fromtimestamp(payload["iat"], tz=UTC),
+            expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC),
         )
     except (KeyError, ValidationError) as exc:
         raise AuthError("R03", f"session token missing required claims: {exc}") from exc

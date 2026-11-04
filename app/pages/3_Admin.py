@@ -27,7 +27,7 @@ def _post(path: str, json: dict):
 st.subheader("Kill switches")
 agents = _get("/admin/agents")["agents"]
 cols = st.columns(len(agents) or 1)
-for col, (agent_id, enabled) in zip(cols, agents.items()):
+for col, (agent_id, enabled) in zip(cols, agents.items(), strict=False):
     with col:
         new_value = st.toggle(agent_id, value=enabled, key=f"toggle_{agent_id}")
         if new_value != enabled:

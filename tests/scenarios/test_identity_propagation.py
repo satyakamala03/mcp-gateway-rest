@@ -8,7 +8,9 @@ from tests.scenarios.conftest import gateway_session
 async def test_same_agent_same_intent_different_user_different_outcome(deps):
     args = {"repo": "payments-api", "number": 1}
 
-    async with gateway_session(deps, agent_id="triage-agent", user="alice", intent="triage_issues") as session:
+    async with gateway_session(
+        deps, agent_id="triage-agent", user="alice", intent="triage_issues"
+    ) as session:
         alice_result = await session.call_tool("get_issue", args)
     async with gateway_session(deps, agent_id="triage-agent", user="bob", intent="triage_issues") as session:
         bob_result = await session.call_tool("get_issue", args)

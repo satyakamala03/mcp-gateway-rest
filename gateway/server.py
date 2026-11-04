@@ -30,8 +30,15 @@ from gateway.core import context as context_mod
 from gateway.core import policy as policy_mod
 from gateway.core.audit import AuditLog
 from gateway.core.auth import AgentTokenStore, AuthError, KillSwitch, verify_session
-from gateway.core.catalog import FILE_SHAPED_RESOURCE_TYPES, TOOLS, TOOLS_BY_NAME
-from gateway.core.models import ClassificationConfig, DataContext, Decision, PolicyConfig, SessionClaims, ToolCall
+from gateway.core.catalog import FILE_SHAPED_RESOURCE_TYPES, TOOLS
+from gateway.core.models import (
+    ClassificationConfig,
+    DataContext,
+    Decision,
+    PolicyConfig,
+    SessionClaims,
+    ToolCall,
+)
 from gateway.core.redact import redact
 
 logger = logging.getLogger("gateway")
@@ -74,6 +81,7 @@ def _agent_catalog(agent_id: str, policy: PolicyConfig) -> list[types.Tool]:
             if tool.name in granted_writes:
                 tools.append(tool)
             continue
+        assert _CLASSIFICATION_FOR_FILTER is not None  # set by create_mcp_server before any handler runs
         entry = _CLASSIFICATION_FOR_FILTER.tool_resource_types.get(tool.name)
         if entry and entry.resource_type in granted_reads:
             tools.append(tool)
@@ -199,7 +207,10 @@ def create_mcp_server(deps: GatewayDeps) -> Server:
             # No DataContext exists yet (we don't even know the intent is
             # valid), so this denial is audited with a minimal placeholder
             # context rather than skipped -- every outcome writes one row.
-            placeholder = DataContext(repo=arguments.get("repo", "unknown"), visibility=None, resource_type="unknown", action="read")
+            placeholder = DataContext(
+                repo=arguments.get("repo", "unknown"), visibility=None,
+                resource_type="unknown", action="read",
+            )
             decision = Decision(outcome="DENY", rule_id=exc.rule_id, reason=exc.reason)
             deps.audit.record(
                 agent="unknown", user="unknown", intent="unknown", tool=name,
@@ -221,7 +232,9 @@ def create_mcp_server(deps: GatewayDeps) -> Server:
             # finalized, so this is a policy-side failure, not a
             # post-ALLOW fetch_error.
             logger.exception("unexpected error deciding tool call %s", name)
-            decision = Decision(outcome="DENY", rule_id="fail_closed", reason="internal error during decision")
+            decision = Decision(
+                outcome="DENY", rule_id="fail_closed", reason="internal error during decision"
+            )
             placeholder = DataContext(
                 repo=arguments.get("repo", "unknown"), visibility=None,
                 resource_type="unknown", action="read",
@@ -250,6 +263,9 @@ async def _handle_standard_tool(call: ToolCall, deps: GatewayDeps, start: float)
         return _deny_result(decision)
 
     fetch = _BACKEND_CALLS.get(name) or _WRITE_CALLS.get(name)
+    # Guaranteed non-None: decide() already passed R06 (tool known), and
+    # every CANONICAL_TOOLS entry has a dispatch lambda in one of these two dicts.
+    assert fetch is not None
     try:
         result = fetch(deps.backend, arguments)
     except BackendError as exc:

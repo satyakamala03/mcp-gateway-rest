@@ -10,6 +10,7 @@ import fnmatch
 import posixpath
 
 from gateway.core.models import (
+    Action,
     ClassificationConfig,
     DataContext,
     PolicyConfig,
@@ -64,7 +65,7 @@ def resolve_context(
     repo = args["repo"]
     repo_entry = policy.repos.get(repo)
     visibility = repo_entry.visibility if repo_entry else None
-    action = "write" if tool in _WRITE_TOOLS else "read"
+    action: Action = "write" if tool in _WRITE_TOOLS else "read"
 
     if tool == "read_file":
         resource_type, tier = classify_path(args["path"], classification)

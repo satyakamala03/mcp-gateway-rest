@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -58,7 +58,7 @@ def test_r03_session_round_trip():
 
 
 def test_r03_expired_session_rejected():
-    now = datetime.now(timezone.utc) - timedelta(minutes=30)
+    now = datetime.now(UTC) - timedelta(minutes=30)
     token = jwt.encode(
         {
             "user": "alice", "agent": "review-agent", "intent": "explain_code",
