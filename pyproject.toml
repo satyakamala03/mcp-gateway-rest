@@ -3,6 +3,7 @@ name = "mcp-gateway"
 version = "0.1.0"
 description = "MCP gateway enforcing identity/intent/data governance in front of GitHub"
 requires-python = ">=3.12"
+license = "MIT"
 dependencies = [
     "mcp>=1.2.0,<2",
     "pydantic>=2.9",

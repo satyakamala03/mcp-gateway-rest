@@ -1,4 +1,4 @@
-# TrustLogix Take-Home: Agent & MCP Gateway Design
+# MCP Gateway: Technical Design
 
 Oct 31, 2026 · @Sk
 
@@ -6,8 +6,8 @@ Oct 31, 2026 · @Sk
 
 Two agents reach GitHub only through one MCP gateway, which allows, denies or redacts each call based on four inputs: the agent's identity, its declared intent, the human user behind it, and the data being requested. How the gateway reaches GitHub is a single swappable layer: it ships as its own MCP gateway calling the GitHub REST API, and switching to a proxy in front of GitHub's official MCP server is one config change.
 
-- **Brief (Deepak Reddy):** two AI agents with different purposes, each exposed through Streamlit. GitHub is the data source. An MCP gateway in between enforces governance, using identity/intent and data context to allow or deny actions.
-- **Thesis:** enforcement lives outside the model. The LLM proposes tool calls; the gateway decides. This mirrors TrustAI's MCP Data Gateway and Intent-Based Access Control.
+- **Problem:** two AI agents with different purposes, each exposed through Streamlit. GitHub is the data source. An MCP gateway in between enforces governance, using identity/intent and data context to allow or deny actions.
+- **Thesis:** enforcement lives outside the model. The LLM proposes tool calls; the gateway decides. This mirrors established intent-based access control patterns for enterprise MCP gateways.
 
 **Goals**
 
@@ -30,7 +30,7 @@ Two agents reach GitHub only through one MCP gateway, which allows, denies or re
 
 ## Key decision: own gateway first, proxy switchable
 
-The brief reads like a gateway that owns its GitHub tools, so that is the default mode. TrustLogix has not yet answered the clarifying question, and if they prefer the proxy, it is a config change plus one adapter.
+A gateway that owns its GitHub tools is the simpler default mode. If a future requirement calls for the proxy instead, it is a config change plus one adapter.
 
 | Mode | Config | What happens behind each tool | Status |
 | --- | --- | --- | --- |
@@ -332,18 +332,18 @@ Agents run inside the Streamlit process, but talk to the gateway over HTTP with 
 
 ## Architecture options
 
-Six ways to put governance between the agents and GitHub were considered. The design does not pick between A and B: it builds both behind one backend interface, with B as the default because it matches the brief's wording.
+Six ways to put governance between the agents and GitHub were considered. The design does not pick between A and B: it builds both behind one backend interface, with B as the default because it's the simpler starting point.
 
 | Option | How it works | Pros | Cons | Verdict |
 | --- | --- | --- | --- | --- |
-| **A. MCP proxy in front of GitHub's official MCP server** | Gateway is an MCP server to agents and an MCP client to `github-mcp-server`; it holds the only GitHub token | Governs a server it didn't write, which is the enterprise reality and TrustLogix's problem; real MCP end to end; less GitHub code to own | Large, changing upstream tool surface; generic tools mix powers; one more process | **Supported mode** (`backend: mcp`) |
+| **A. MCP proxy in front of GitHub's official MCP server** | Gateway is an MCP server to agents and an MCP client to `github-mcp-server`; it holds the only GitHub token | Governs a server it didn't write, which is the enterprise reality for any MCP governance layer; real MCP end to end; less GitHub code to own | Large, changing upstream tool surface; generic tools mix powers; one more process | **Supported mode** (`backend: mcp`) |
 | **B. Gateway with its own GitHub tools** | Gateway is the MCP server; a handful of tools call the GitHub REST API directly | Full control of the data context; simpler to test; no upstream to track | Gateway and data server blur into one, so the "between" is less visible; you own every tool | **Default mode** (`backend: rest`) |
-| **C. Plain HTTP gateway, no MCP** | Agents call REST endpoints on the gateway | Simplest to build and test | Ignores "MCP Gateway" in the brief; loses tool discovery and filtering | Rejected |
+| **C. Plain HTTP gateway, no MCP** | Agents call REST endpoints on the gateway | Simplest to build and test | Loses tool discovery and filtering, and doesn't read as an "MCP Gateway" | Rejected |
 | **D. Policy library inside each agent** | Each agent calls a policy check before using its own GitHub token | No extra network hop | Agent holds credentials and can skip the check, so a compromised agent bypasses everything | Rejected |
 | **E. GitHub-native scoping only** | A separate fine-grained token or GitHub App per agent, no gateway | No custom code; GitHub enforces it | Cannot see intent, file path, human user or arguments; no decision audit | Rejected as the control; **kept as a defense-in-depth layer** under both modes |
-| **F. Off-the-shelf gateway plus a policy plugin** | For example, IBM ContextForge with a custom policy hook | Fast to stand up; production features for free | Hides your work; the policy engine is the assignment; learning curve | Rejected |
+| **F. Off-the-shelf gateway plus a policy plugin** | For example, IBM ContextForge with a custom policy hook | Fast to stand up; production features for free | Hides your work; the policy engine is the part worth building yourself; learning curve | Rejected |
 
-**Why E matters most:** it is the "identity is enough" position TrustLogix argues against. Comparing what each layer can enforce is the clearest justification for the gateway:
+**Why E matters most:** it is the "identity is enough" position this design argues against. Comparing what each layer can enforce is the clearest justification for the gateway:
 
 | Can it enforce... | GitHub token scoping (E) | Gateway |
 | --- | --- | --- |
@@ -374,14 +374,14 @@ Each choice below is one you should be able to defend in one sentence, along wit
 
 | Decision        | Choice                                                                                                             | Why                                                                                                                               | Rejected alternative                                          |
 | --------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Upstream        | Swappable backend behind one interface: own REST tools by default, proxy to GitHub's official MCP server by config | The brief reads like own tools, while TrustLogix's product governs servers it didn't write; the seam supports both without rework | Committing to a single upstream                               |
+| Upstream        | Swappable backend behind one interface: own REST tools by default, proxy to GitHub's official MCP server by config | Own tools is the simpler starting point, while a governance layer in general also has to govern servers it didn't write; the seam supports both without rework | Committing to a single upstream                               |
 | Tool catalog    | The gateway's own canonical catalog, in both modes                                                                 | Agents, policy and demo never change between modes; dangerous operations don't exist                                              | Passing upstream tools straight through                       |
 | Transport       | MCP over streamable HTTP                                                                                           | A network boundary with headers for tokens; agents and gateway are separate processes                                             | stdio, which runs in-process and has no auth                  |
 | Agent identity  | One secret per agent, presented as a bearer token                                                                  | Each agent is distinguishable and revocable                                                                                       | A shared key, which makes agents indistinguishable            |
 | User and intent | Signed, short-lived session token minted by the Streamlit app                                                      | Anchors declared intent outside the LLM; agents cannot forge it                                                                   | Headers set by agent code, or intent inferred from the prompt |
 | Intent scope    | One intent per session, chosen in the UI                                                                           | Matches one task; limits blast radius; easy to audit                                                                              | Intent per request, which an agent could change mid-task      |
 | Policy format   | YAML, default deny, ordered rules with IDs                                                                         | Deterministic, readable, reviewable in a pull request                                                                             | OPA or Cedar (a next step for production)                     |
-| Outcomes        | ALLOW and DENY on calls, plus REDACT on responses                                                                  | Covers the brief and adds defense in depth                                                                                        | REQUIREAPPROVAL (a next step)                                 |
+| Outcomes        | ALLOW and DENY on calls, plus REDACT on responses                                                                  | Covers the goals and adds defense in depth                                                                                        | REQUIREAPPROVAL (a next step)                                 |
 | Classification  | Four tiers; path rules first-match, most restrictive first                                                         | Mirrors enterprise data classes; predictable                                                                                      | Content scanning to classify, which is slow and probabilistic |
 | Least privilege | Filtered discovery plus call-time checks                                                                           | The agent never sees tools it can't use, and calls are enforced anyway                                                            | Call-time checks only                                         |
 | Failure mode    | Fail closed                                                                                                        | A security control must not fail open                                                                                             | Fail open for availability                                    |
@@ -460,7 +460,7 @@ Three layers of tests, each tied to a guarantee. The scenario tests double as th
 
 ## Build plan, risks and open items
 
-The plan builds from the inside out: the core first, tested offline, then GitHub, then agents and UI. Assuming a Tuesday, Nov 3 deadline (still to confirm), Wednesday is buffer or the proxy-mode switch.
+The plan builds from the inside out: the core first, tested offline, then GitHub, then agents and UI. Wednesday is buffer or the proxy-mode switch.
 
 | Day | Build | Done when |
 | --- | --- | --- |
@@ -468,7 +468,7 @@ The plan builds from the inside out: the core first, tested offline, then GitHub
 | Sun, Nov 1 | Northbound MCP server, auth and session tokens, audit, `RestBackend`; create demo repos and planted data | A scripted MCP client gets correct ALLOW and DENY against real GitHub |
 | Mon, Nov 2 | Agent runner, Triage and Review pages with decision badges; scenario tests | All must-have demo cases pass as tests and work in the UI |
 | Tue, Nov 3 | Admin page, kill switch, redaction; README; demo video | The demo video covers every must-have case |
-| Wed, Nov 4 | Buffer, or `McpBackend` if TrustLogix asks for proxy mode | Contract tests pass with `backend: mcp` |
+| Wed, Nov 4 | Buffer, or `McpBackend` if proxy mode is requested | Contract tests pass with `backend: mcp` |
 
 **Risks**
 
@@ -477,11 +477,11 @@ The plan builds from the inside out: the core first, tested offline, then GitHub
 | Per-agent filtering of tool discovery is awkward in the MCP Python SDK | Fall back to call-time enforcement only, and show each agent's catalog in its page |
 | Upstream tool names differ from what the design assumes (proxy mode only) | Pin a version and build `McpBackend`'s mapping from its `tools/list` |
 | LLM ignores the denial message and keeps retrying | System prompt instructions plus a per-turn cap on tool calls in the runner |
-| Deadline is earlier than assumed | Stretch items (anomaly flag, hash chain) are already outside the plan |
+| Timeline is tighter than assumed | Stretch items (anomaly flag, hash chain) are already outside the plan |
 
 **Open items**
 
-- [x] Confirm the deadline and deliverable format
+- [x] Confirm the target timeline and deliverable format
 - [x] Hear back on own gateway vs. proxy mode
 - [x] Pick the LLM provider
 - [x] Create the demo repos (`storefront` public, `payments-api` private) with planted fake secrets, a prompt-injection issue, and an issue containing a pasted log with a fake key and email
